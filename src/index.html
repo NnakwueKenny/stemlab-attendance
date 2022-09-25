@@ -128,7 +128,7 @@
                 responsePage.classList.add('hidden');
                 resultSection.innerHTML = `<span class="${alreadySignedIn? 'bg-yellow-500': 'bg-green-500'} inline-flex font-bold text-white rounded px-4 py-2">${result}</span>`;
                 setTimeout(() => {
-                    window.location.href = '/src';
+                    window.location.reload();
                 }, 2000);
             })
             .catch (err => {
