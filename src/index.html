@@ -59,7 +59,7 @@
             </div>
             <div class='w-full max-w-3xl px-4 mb-4'>
                 <form class='details-form hidden flex flex-col gap-4 w-full border-2 rounded-xl px-6 md:px-8 py-8'>
-                    <div class='w-full select-section'>
+                    <!-- <div class='w-full select-section'>
                         <label for="user" class="block mb-2 text-sm font-medium text-gray-900 dark:text-gray-400 text-orange-500 text-xl">User</label>
                         <select id="user" name='user' class="w-full bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required>
                             <option></option>
@@ -89,7 +89,7 @@
                             <option>Session</option>
                         </select>
                         <span class='error-section hidden text-red-600 font-semibold'><i>This section is required *</i></span>
-                    </div>
+                    </div> -->
                     <div class="sr-only">
                         <label for="qrcode"></label>
                         <input class='qr-code-response' type='text' name='qrcode' id='qrcode' placeholder='qrcode'>
@@ -108,48 +108,16 @@
     <script>
         const selectSection = document.querySelectorAll('.select-section');
 
-        const compileValues = async (userName, form, resultSection) => {
-            const submitBtn = document.querySelector('.submit-btn');
-            console.log(submitBtn)
-
-            await submitBtn.addEventListener('click', async (e) => {
-                e.preventDefault();
-                const formInput = form.querySelectorAll('select');
-                let userDetails = {};
-                formInput.forEach(input => {
-                    userDetails[`${input.name}`] = input.value;
-                });
-                userDetails.qrcode = userName;
-                console.log(userDetails);
-
-                let userDetailsArray = [];
-                for (const item in userDetails) {
-                    userDetailsArray.push(userDetails[item]);
-                }
-                console.log(userDetailsArray);
-                if (userDetailsArray.some((item, index) => item == '')) {
-                    console.log();
-                    selectSection.forEach(section => {
-                        const errorSection = section.querySelector('.error-section');
-                        const select = section.querySelector('select');
-                        if (select.value == '') {
-                            errorSection.classList.remove('hidden')
-                        } else {
-                            errorSection.classList.add('hidden')
-                        }
-                    });
-                    return;
-                } else {
-                    submitValues(userDetails, resultSection);
-                }
-            })
-
+        const compileValues = async (userDetails, resultSection) => {
+            
+            submitValues(userDetails, resultSection);
         }
 
         const submitValues = async (formData, resultSection) => {
             console.log('Starting!');
             console.log('Data fetching operation started');
             const responsePage = document.querySelector('.response-page');
+            const requestData = {email: formData.email}
             // responsePage.innerHTML += '';
             responsePage.classList.remove('hidden');
             await fetch('https://stemlab-register.us-south.cf.appdomain.cloud/attend',
@@ -158,33 +126,36 @@
                     headers: {
                         'Content-Type': 'application/json',
                     },
-                    body: JSON.stringify(formData)
+                    body: JSON.stringify(requestData)
                 }
             )
             .then(response => {
-                console.log('Data fetched')
+                console.log('Data fetched');
                 return response.json();
             })
             .then(data => {
                 let result;
                 let alreadySignedIn;
+                let notSignedIn;
                 console.log(data);
                 if (data.detail.toLowerCase() === 'user already signed in') {
                     result = data.detail;
                     alreadySignedIn = true;
+                } else if (data.detail.toLowerCase() === 'not found') {
+                    result = 'User not registered!';
+                    notSignedIn = true;
                 } else {
-                    result = 'Successfully signed In';
                     alreadySignedIn = false;
                 }
                 responsePage.classList.add('hidden');
                 selectSection.forEach(section => {
                     const errorSection = section.querySelector('.error-section');
-                    errorSection.classList.add('hidden')
+                    errorSection.classList.add('hidden');
                 });
-                resultSection.innerHTML = `<span class="${alreadySignedIn? 'bg-yellow-500': 'bg-green-500'} inline-flex font-bold text-white rounded px-4 py-2">${result}</span>`;
+                resultSection.innerHTML = `<span class="${alreadySignedIn? 'bg-yellow-500':  notSignedIn? 'bg-red-500': 'bg-green-500'} inline-flex font-bold text-white rounded px-4 py-2">${result}</span>`;
                 setTimeout(() => {
                     window.location.reload();
-                }, 2000);
+                }, 4000);
             })
             .catch (err => {
                 console.log(err.json());
@@ -192,20 +163,52 @@
             console.log('Data fetching operation ended!');
         }
 
-        let userName;
         const onScanSuccess = (qrCodeMessage) => {
-            userName = qrCodeMessage;
+            let message = qrCodeMessage;
             const detailsForm = document.querySelector('.details-form');
             detailsForm.classList.remove('hidden');
             const qrCodeResponse = detailsForm.querySelector('.qr-code-response');
-            qrCodeResponse.value = userName;
+            qrCodeResponse.value = message;
+            console.log(typeof message);
+            const splitMessage = message.split(' ');
+            let userDetails = {};
+            let userDetailsArr;
+            let userDetailsPropsArr;
+
+            if (splitMessage.length === 4) {
+                console.log(splitMessage);
+                const name = splitMessage.slice(0, 2).join(' ');
+                const phone = splitMessage[2];
+                const email = splitMessage[3];
+                userDetails = {name, phone, email};
+            } else {
+                console.log(splitMessage);
+                const name = splitMessage.slice(0, 3).join(' ');
+                const phone = splitMessage[3];
+                const email = splitMessage[4];
+                userDetails = {name, phone, email};
+            }
+            
+            userDetailsArr = Object.keys(userDetails);
+            console.log('userDetailsArr', userDetailsArr);
+            userDetailsPropsArr = Object.values(userDetails);
+            console.log('userDetailsPropsArr', userDetailsPropsArr);
             const result = document.getElementById('result');
-            result.innerHTML = '<span class="inline-flex result font-bold text-white rounded px-4 py-2">'+qrCodeMessage+'</span>';
+            result.innerHTML = `<div class='result flex flex-col w-full gap-1 font-bold text-white rounded px-4 py-2'>
+                ${userDetailsArr.map((item, index) => `
+                    <div>
+                        <span class="inline-flex capitalize">${item}: </span>
+                        <span> ${userDetailsPropsArr[index]}</span>
+                    </div>
+                    `)
+                    .join('')}
+                </div>
+            `;
 
             html5QrcodeScanner.clear()
             .then(_ => {
                 // the UI should be cleared here
-                compileValues(userName, detailsForm, result);     
+                compileValues(userDetails, result);     
             }).catch(error => {
                 // Could not stop scanning for reasons specified in `error`.
                 // This conditions should ideally not happen.
